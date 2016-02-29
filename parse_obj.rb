@@ -1,18 +1,41 @@
-# @author Andrey Kaipov
-#
-# ARGV[0] is the source .obj file to be triangulated.
-# ARGV[1] is the triangulated .obj file with a name of your choice.
-#
-# Further, this script removes vertex texture coordinates, vertex normals,
-# and parameter space vertices. See https://en.wikipedia.org/wiki/Wavefront_.obj_file#File_format.
-# We compute our own face normals and vertex normals.
-#
-# Example:
+# A vertex has coordinates in 3D-space.
+# A face has 3 three identifying coordinates
+# A mesh is a list of vertices and a list of faces.
+require "set.rb"
+Vertex = Struct.new(:x, :y, :z)
+Face = Struct.new(:idv1, :idv2, :idv3)
+Mesh = Struct.new(:vertices, :faces)
+
+# Parses an obj file into a mesh.
+# Assumes the obh file is triangulated.
+def parse_obj file_name
+
+    # We want our vertices to be 1-indexed because obj files are too,
+    # so we add a bogus Vertex value into the mesh.vertices list.
+    mesh = Mesh.new([ Vertex[] ], [])
+
+    File.open(file_name, "r") do |file|
+
+        file.each_line do |line|
+
+            # A line either looks like "v x y z", or like "f v1 v2 v3".
+            vec3 = line.slice(2..-1).split(' ')
+
+            if line[0] == 'v' then
+                mesh.vertices << Vertex[*vec3.map(&:to_f)]
+            elsif line[0] == 'f' then
+                mesh.faces << Face[*vec3.map(&:to_i)]
+            end
+
+        end
+
+    end
+
+    return mesh
+
+end
 
 def triangulate infile_name
-
-    vertex_count = 0
-    face_count = 0
 
     base = File.basename( infile_name, ".*" )
     time = Time.now.to_i
