@@ -1,30 +1,27 @@
 # A vertex has coordinates in 3D-space.
-# A face has 3 three identifying coordinates
+# A triangulated face has three identifying vertices.
 # A mesh is a list of vertices and a list of faces.
-require "set.rb"
 Vertex = Struct.new(:x, :y, :z)
 Face = Struct.new(:idv1, :idv2, :idv3)
 Mesh = Struct.new(:vertices, :faces)
 
 # Parses an obj file into a mesh.
-# Assumes the obh file is triangulated.
+# Assumes the obj file is triangulated.
 def parse_obj file_name
 
-    # We want our vertices to be 1-indexed because obj files are too,
-    # so we add a bogus Vertex value into the mesh.vertices list.
-    mesh = Mesh.new([ Vertex[] ], [])
+    mesh = Mesh.new([], [])
 
     File.open(file_name, "r") do |file|
 
         file.each_line do |line|
 
-            # A line either looks like "v x y z", or like "f v1 v2 v3".
-            vec3 = line.slice(2..-1).split(' ')
+            # A line looks like "v x y z", or like "f v1 v2 v3 ..."
 
             if line[0] == 'v' then
-                mesh.vertices << Vertex[*vec3.map(&:to_f)]
+                mesh.vertices << line.slice(2..-1).split(' ').map(&:to_f)
             elsif line[0] == 'f' then
-                mesh.faces << Face[*vec3.map(&:to_i)]
+                # Vertices are 1-indexed in obj files. We like 0-indexed.
+                mesh.faces << line.slice(2..-1).split(' ').map(&:to_i).map(&:pred)
             end
 
         end
