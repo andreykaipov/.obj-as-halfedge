@@ -10,9 +10,9 @@ class OBJParser
         File.open(fileName, "r") do |file|
             file.each_line do |line|
                 # A line looks like "v x y z", or like "f v1 v2 v3 ..."
-                if line[0] == 'v' then
+                if line[0] == 'v' && line[1] == ' ' then
                     mesh.vertices << line.slice(2..-1).split(' ').map(&:to_f)
-                elsif line[0] == 'f' then
+                elsif line[0] == 'f' && line[1] == ' ' then
                     # Vertices are 1-indexed in obj files. We like 0-indexed.
                     mesh.faces << line.slice(2..-1).split(' ').map(&:to_i).map(&:pred)
                 end

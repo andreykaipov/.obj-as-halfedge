@@ -5,7 +5,7 @@ require_relative "HalfEdgesHash"
 
 class HalfEdgeMesh
 
-    attr_accessor :mesh, :hevs, :hefs
+    attr_accessor :mesh, :hevs, :hefs, :hehash
 
     def initialize mesh
         @mesh = mesh
@@ -15,7 +15,7 @@ class HalfEdgeMesh
 
     def build
 
-        halfEdgesHash = HalfEdgesHash.new()
+        @hehash = Hash.new()
 
         mesh.vertices.each do |v|
             halfEdgeVertex = HalfEdgeVertex.new(v[0], v[1], v[2])
@@ -49,8 +49,8 @@ class HalfEdgeMesh
                     "Offending half-edge occurs in face `f #{face.map{|v| v+1}.join(' ')}`.\n"\
                     "Vertex in question is `v #{@hevs[face[i]].x} #{@hevs[face[i]].y} #{@hevs[face[i]].z}`."
                 else
-                    key = halfEdgesHash.get_edge_key face[i - 1], face[i]
-                    halfEdgesHash.hash_edge key, faceHalfEdges[i]
+                    key = @hehash.get_edge_key face[i - 1], face[i]
+                    @hehash.hash_edge key, faceHalfEdges[i]
                 end
             end
 
@@ -75,6 +75,21 @@ class HalfEdgeMesh
             orientedFaces = face.orient_adj_faces
             orientedFaces.each { |face| stack.push face }
         end
+    end
+
+    # The mesh acts as a surface. If the surface is closed, this returns true.
+    # Otherwise, the surface is a surface with boundary.
+    def is_closed?
+        @hehash.values.each do |he|
+            if he.is_boundary_edge? then
+                return false
+            end
+        end
+        return true
+    end
+
+    def curvature
+        @hevs.map(&:compute_curvature).reduce(0, &:+)
     end
 
 end
