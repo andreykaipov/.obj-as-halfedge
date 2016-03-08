@@ -56,10 +56,13 @@ if __FILE__ == $PROGRAM_NAME
             boundaryVertices = boundaryVertices - boundaryComponents.flatten
             puts boundaryVertices.size
         end
-        puts "Number of boundary components is: #{boundaryComponents.size}"
+        puts "Number of boundary components is: #{boundaryComponents.size}\n"
+
+
+        puts "Curvature of surface with boundary is #{heMesh.curvature}\n"
     end
     #
-    #
+
     puts heMesh.mesh.vertices.size
     puts heMesh.mesh.faces.size
     puts "---"

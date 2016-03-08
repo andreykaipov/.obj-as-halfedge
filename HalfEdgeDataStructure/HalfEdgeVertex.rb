@@ -23,12 +23,9 @@ class HalfEdgeVertex
             halfedge = self.outHalfEdge
         end
         loop do
-            if halfedge.is_boundary_edge? then return true
-            else halfedge = halfedge.oppHalfEdge.nextHalfEdge end
-            if halfedge == self.outHalfEdge then break end
-            # until halfedge.endVertex == self do halfedge = halfedge.nextHalfEdge end
-            # if halfedge.is_boundary_edge? then return true
-            # else halfedge = halfedge.oppHalfEdge end
+            return true if halfedge.is_boundary_edge?
+            halfedge = halfedge.oppHalfEdge.nextHalfEdge
+            break if halfedge == self.outHalfEdge
         end
         return false
     end
@@ -43,67 +40,6 @@ class HalfEdgeVertex
         end
     end
 
-    # KEEP THIS HERE FOR ONE COMMIT FOR MEMORY :-)
-    # In this case, since we don't know the outgoing halfedge, we will traverse
-    # the halfedges in one direction, and if we hit a boundary halfedge, then
-    # we will traverse them in the other direction. If this other direction also
-    # hits a boundary halfedge, then the target vertex is not adjacent to self!
-    def __boundary__adjacent_to? target
-        # A vertex is trivially adjacent to itself.
-        if self == target then return true end
-
-        # "From one direction"
-        halfedgeA = self.outHalfEdge
-        loop do
-            # This until-loop is a workaround to not having previous pointers.
-            until halfedgeA.endVertex == self do
-                prev = halfedgeA.dup
-                halfedgeA = halfedgeA.nextHalfEdge
-            end
-            return true if prev.endVertex == target
-            break if halfedgeA.is_boundary_edge?
-            halfedgeA = halfedgeA.oppHalfEdge
-        end
-        # "From the other direction"
-        halfedgeB = self.outHalfEdge
-        loop do
-            return true if halfedgeB.endVertex == target
-            break if halfedgeB.is_boundary_edge?
-            halfedgeB = halfedgeB.oppHalfEdge.nextHalfEdge
-        end
-
-        return false
-
-        # if self == target then
-        #     return true
-        # else
-        #     self.__boundary__neighboring_vertices.member? target
-        # end
-    end
-    # Here we use the __boundary__adjacent_to? strategy, except we go in
-    # the "other direction" first to find a bordering halfedge. Then just go
-    # in the typical direction and collect all of the vertices. We do this
-    # because the vertices need to be in order. Further, we HAVE TO go in the
-    # "other direction" first - it won't work otherwise.
-    def __boundary__neighboring_vertices
-        neighbors = []
-        halfedge = self.outHalfEdge
-        loop do
-            break if halfedge.is_boundary_edge?
-            halfedge = halfedge.oppHalfEdge.nextHalfEdge
-        end
-        neighbors << halfedge.endVertex
-        loop do
-            until halfedge.endVertex == self do
-                prev = halfedge.dup
-                halfedge = halfedge.nextHalfEdge
-            end
-            neighbors << prev.endVertex
-            break if halfedge.is_boundary_edge?
-            halfedge = halfedge.oppHalfEdge
-        end
-        return neighbors
-    end
 
     # Returns an array of the neighboring vertices of this vertex.
     # To do this we first find the outgoing halfedges and just get their vertices.
@@ -128,21 +64,52 @@ class HalfEdgeVertex
         end
     end
 
+    # Here we swipe from the outgoing halfedge to a boundary halfedge,
+    # and then swipe all the way to the other boundary halfedge.
+    # The style in which we sweep first is important - take note!
+    def __boundary__neighboring_vertices
+        neighbors = []
+        halfedge = self.outHalfEdge
+        # Sweep to the boundary.
+        loop do
+            break if halfedge.is_boundary_edge?
+            halfedge = halfedge.oppHalfEdge.nextHalfEdge
+        end
+        neighbors << halfedge.endVertex
+        # Sweep to the other boundary.
+        loop do
+            # This until-loop is a workaround to not having previous pointers.
+            until halfedge.endVertex == self do
+                prev = halfedge.dup
+                halfedge = halfedge.nextHalfEdge
+            end
+            neighbors << prev.endVertex
+            break if halfedge.is_boundary_edge?
+            halfedge = halfedge.oppHalfEdge
+        end
+        return neighbors
+    end
 
-    # Finds the vector in 3D-space from self to the argument.
-    # The coordinates are specified in the user provided obj file.
+    # In this case, since we don't know the outgoing halfedge, we will traverse
+    # the halfedges in one direction, and if we hit a boundary halfedge, then
+    # we will traverse them in the other direction. If this other direction also
+    # hits a boundary halfedge, then the target vertex is not adjacent to self!
+    def __boundary__adjacent_to? target
+        # A vertex is trivially adjacent to itself.
+        if self == target then
+            return true
+        else
+            self.__boundary__neighboring_vertices.member? target
+        end
+    end
+
+
+    # Finds the vector in 3D-space from self to the target argument.
+    # If self is point p1, and target is point p2, then our desired vector is p2 - p1.
     def vector_to target
-        # These are vectors from the origin to our points in space.
-        p1 = Vector[ self.x, self.y, self.z ]
-        p2 = Vector[ target.x, target.y, target.z ]
-        # Now compute the difference.
-        p1p2 = p2 - p1
-        return p1p2
+        return Vector[ target.x - self.x, target.y - self.y, target.z - self.z ]
     end
 
-    def vectors_to_neighbors
-        vectorsTo = self.__nonboundary__neighboring_vertices.map{ |vertex| self.vector_to vertex }
-    end
 
     def compute_curvature
         if self.is_boundary_vertex? then
@@ -154,7 +121,13 @@ class HalfEdgeVertex
 
 
     def __boundary__compute_curvature
-
+        vectors = self.__boundary__neighboring_vertices.map { |vertex| self.vector_to vertex }
+        angles = []
+        (vectors.size - 1).times do |i|
+            angles[i] = vectors[i].angle_with vectors[i + 1]
+        end
+        sumOfAngles = angles.reduce(0, :+)
+        @curvature = Math::PI - sumOfAngles
     end
 
     # Get the vectors from self to the neighboring vertices.
@@ -165,9 +138,11 @@ class HalfEdgeVertex
         # neighboring_vertices.each do |v|
         #     puts "neighbor is #{v.x} #{v.y} #{v.z}"
         # end
-        vectors = self.vectors_to_neighbors
-        angles = vectors.map.with_index(0) do |vec, i|
-            if vectors.member? Vector[0.0,0.0,0.0] then
+        vectors = self.__nonboundary__neighboring_vertices.map{ |vertex| self.vector_to vertex }
+        # If the above vectors array has a zero vector,
+        # then that means there are pseudo-unique vertices in the obj file.
+        angles = vectors.map.with_index(0) do |_, i|
+            if vectors.member? Vector[0.0, 0.0, 0.0] then
                 return 0
             else
                 vectors[i - 1].angle_with vectors[i]
