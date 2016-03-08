@@ -11,11 +11,24 @@ class HalfEdgeMesh
         @mesh = mesh
         @hevs = []
         @hefs = []
+        @hehash = Hash.new()
+
+        # Find duplicates with their sizes in (I think) linear time.
+        fakeVertices = mesh.vertices.group_by{|v| v}.select{|k,v| v.size > 1}.map{|k,v| [k, v.size]}.to_h
+        unless fakeVertices.empty?
+            puts "\nYou have several pseudo-unique vertices in this mesh. Say what?\n"\
+                 "The following vertices are listed uniquely in your .obj file,\n"\
+                 "but have identical coordinates:\n\n"
+            fakeVertices.each do |fv, multiplicity|
+                puts "(#{fv[0]}, #{fv[1]}, #{fv[2]}) occurs #{multiplicity} times."
+            end
+            puts "\nThis is fine, but the total curvature of the surface may be a bit off"
+            puts "since we'll ignore the angles formed by adjacent edges on these vertices."
+        end
+        puts fakeVertices.values.reduce(0,:+)
     end
 
     def build
-
-        @hehash = Hash.new()
 
         mesh.vertices.each do |v|
             halfEdgeVertex = HalfEdgeVertex.new(v[0], v[1], v[2])
@@ -49,7 +62,7 @@ class HalfEdgeMesh
                     "Offending half-edge occurs in face `f #{face.map{|v| v+1}.join(' ')}`.\n"\
                     "Vertex in question is `v #{@hevs[face[i]].x} #{@hevs[face[i]].y} #{@hevs[face[i]].z}`."
                 else
-                    key = @hehash.get_edge_key face[i - 1], face[i]
+                    key = @hehash.form_edge_key face[i - 1], face[i]
                     @hehash.hash_edge key, faceHalfEdges[i]
                 end
             end
@@ -90,6 +103,10 @@ class HalfEdgeMesh
 
     def curvature
         @hevs.map(&:compute_curvature).reduce(0, &:+)
+    end
+
+    def boundary_edges
+        @hehash.select { |key, he| he.is_boundary_edge?}
     end
 
 end

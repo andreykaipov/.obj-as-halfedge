@@ -1,9 +1,9 @@
 class Hash
-    
+
     # Here x can be thought of as the source and y as the target of a half-edge.
     # By sorting the pair of vertices and using a hash, we are able to detect
     # a half-edge's opposite half-edge.
-    def get_edge_key x, y
+    def form_edge_key x, y
         return [ [x,y].min, [x,y].max ]
     end
 
