@@ -29,16 +29,22 @@ class HalfEdgeMesh
     end
 
     def build
+        self.build_vertices
+        self.build_faces
+    end
 
+    def build_vertices
         mesh.vertices.each do |v|
             halfEdgeVertex = HalfEdgeVertex.new(v[0], v[1], v[2])
             @hevs << halfEdgeVertex
         end
+    end
 
+    def build_faces
         mesh.faces.each do |face|
             # Each og face will correspond to a halfEdgeFace.
             halfEdgeFace = HalfEdgeFace.new()
-
+            halfEdgeFace.oriented = false
             # Create our half-edges for this face and store them in an array.
             # Note that the length of `face` is the number of half-edges for this face.
             faceHalfEdges = []
@@ -47,11 +53,13 @@ class HalfEdgeMesh
                 halfEdge.adjFace = halfEdgeFace
                 faceHalfEdges << halfEdge
             end
+            # Set the face to touch one of its half-edges. Doesn't matter which one.
+            halfEdgeFace.adjHalfEdge = faceHalfEdges[0]
 
-            # For each half-edge, connect it to the next one -- like a circle.
+            # For each half-edge, connect it to the next one -- like a circle you know.
             # This gives each face an arbitary orientation. We'll fix it later if necessary.
             # Also set the opposite of each half-edge via hashing.
-            # Note: The edge-vertex connection is not
+            # Note: The edge-vertex connection is not -- NOT WHAT? I FORGOT TO FINISH THIS COMMENT
             faceHalfEdges.size.times do |i|
                 faceHalfEdges[i].endVertex = @hevs[ face[i] ]
                 faceHalfEdges[i - 1].nextHalfEdge = faceHalfEdges[i]
@@ -67,19 +75,13 @@ class HalfEdgeMesh
                 end
             end
 
-            # Set the face to touch one of its half-edges. Doesn't matter which one.
-            halfEdgeFace.adjHalfEdge = faceHalfEdges[0]
-            halfEdgeFace.oriented = false
-
             @hefs << halfEdgeFace
-
         end
-
     end
 
     # Here we iteratively orient all of the faces in our mesh. The recursive solution overflows the stack!
     # What we do is suppose the first face is oriented, and then orient its adjacent faces.
-    # Then we orient the faces that were oriented! In this was, the stack always gets smaller!
+    # Then we orient the faces that were oriented! In this way, the stack always gets smaller!
     def orient
         @hefs[0].oriented = true
         stack = [ @hefs[0] ]
@@ -90,23 +92,21 @@ class HalfEdgeMesh
         end
     end
 
-    # The mesh acts as a surface. If the surface is closed, this returns true.
-    # Otherwise, the surface is a surface with boundary.
-    def is_closed?
-        @hehash.values.each do |he|
-            if he.is_boundary_edge? then
-                return false
-            end
-        end
-        return true
-    end
-
     def curvature
         @hevs.map(&:compute_curvature).reduce(0, &:+)
     end
 
     def boundary_edges
-        @hehash.select { |key, he| he.is_boundary_edge?}
+        @hehash.select { |key, he| he.is_boundary_edge? }
+    end
+
+    def boundary_vertices
+        @hevs.select{ |v| v.is_boundary_vertex? }
+    end
+
+    # The mesh acts as a surface. It's either closed or it has a boundary.
+    def is_closed?
+        return self.boundary_edges.size == 0
     end
 
     # Finds the number of boundary components. Considers bow-ties as one component.
@@ -124,6 +124,21 @@ class HalfEdgeMesh
             boundaryComponents << component
         end
         return boundaryComponents
+    end
+
+    # don't forget to check for faces when doing the characteristic stuff for surfaces with boundary.
+    # X(S) = X(S') - b where S is the surface with boundary and S' is the patched up surface
+    # Then once we have X(S), to find g(S), we just use X(S) = 2 - 2g(S).
+    def characteristic
+        edges = @hehash.values.select{|e| not e.is_boundary_edge?}.size / 2
+        boundaryEdges = self.boundary_edges.size
+        b = self.boundary_components.size
+        χ = @hevs.size - (edges + boundaryEdges) + @hefs.size
+        return χ
+    end
+
+    def genus
+        return 1 - self.characteristic / 2.0
     end
 
 end
