@@ -49,14 +49,14 @@ if __FILE__ == $PROGRAM_NAME
 
         # boundaryVertices[0].outgoing_half_edges
 
-        boundaryComponents = []
-        index = 0
-        until boundaryVertices.empty? do
-            boundaryComponents << boundaryVertices.select{|bv| bv.adjacent_to? boundaryVertices.first}
-            boundaryVertices = boundaryVertices - boundaryComponents.flatten
-            puts boundaryVertices.size
-        end
-        puts "Number of boundary components is: #{boundaryComponents.size}\n"
+        # boundaryComponents = []
+        # index = 0
+        # until boundaryVertices.empty? do
+        #     boundaryComponents << boundaryVertices.select{|bv| bv.adjacent_to? boundaryVertices.first}
+        #     boundaryVertices = boundaryVertices - boundaryComponents.flatten
+        #     puts boundaryVertices.size
+        # end
+        puts "Number of boundary components is: #{heMesh.boundary_components.size}\n"
 
 
         puts "Curvature of surface with boundary is #{heMesh.curvature}\n"

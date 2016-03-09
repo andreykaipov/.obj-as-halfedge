@@ -109,4 +109,21 @@ class HalfEdgeMesh
         @hehash.select { |key, he| he.is_boundary_edge?}
     end
 
+    # Finds the number of boundary components. Considers bow-ties as one component.
+    # The strategy here is to find adjcaent boundary vertices by testing against the most
+    # recently found adjacent vertex. Doing so advances our search in a boundary component.
+    def boundary_components
+        boundaryVertices = @hevs.select{ |v| v.is_boundary_vertex? }
+        boundaryComponents = []
+        until boundaryVertices.empty? do
+            component = [ boundaryVertices.first ]
+            (boundaryVertices - component).each do |bv|
+                component << bv if bv.adjacent_to? component.last
+            end
+            boundaryVertices = boundaryVertices - component
+            boundaryComponents << component
+        end
+        return boundaryComponents
+    end
+
 end
