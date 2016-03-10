@@ -5,7 +5,8 @@ require_relative "HalfEdgesHash"
 
 class HalfEdgeMesh
 
-    attr_accessor :mesh, :hevs, :hefs, :hehash
+    attr_reader :mesh, :hevs, :hefs, :hehash
+    attr_reader :numVertices, :numEdges, :numFaces, :chi, :genus, :curvature
 
     def initialize mesh
         @mesh = mesh
@@ -25,7 +26,6 @@ class HalfEdgeMesh
             puts "\nThis is fine, but the total curvature of the surface may be a bit off"
             puts "since we'll ignore the angles formed by adjacent edges on these vertices."
         end
-        puts fakeVertices.values.reduce(0,:+)
     end
 
     def build
@@ -110,7 +110,7 @@ class HalfEdgeMesh
     end
 
     # Finds the number of boundary components. Considers bow-ties as one component.
-    # The strategy here is to find adjcaent boundary vertices by testing against the most
+    # The strategy here is to find adjacent boundary vertices by testing against the most
     # recently found adjacent vertex. Doing so advances our search in a boundary component.
     def boundary_components
         boundaryVertices = @hevs.select{ |v| v.is_boundary_vertex? }
@@ -118,7 +118,7 @@ class HalfEdgeMesh
         until boundaryVertices.empty? do
             component = [ boundaryVertices.first ]
             (boundaryVertices - component).each do |bv|
-                component << bv if bv.adjacent_to? component.last
+                component << bv if component.any?{ |v| bv.adjacent_to? v }
             end
             boundaryVertices = boundaryVertices - component
             boundaryComponents << component
@@ -139,6 +139,52 @@ class HalfEdgeMesh
 
     def genus
         return 1 - self.characteristic / 2.0
+    end
+
+    def print_stats
+        @numVertices = @hevs.size
+        @numEdges = @hehash.select{|key, edge| not edge.is_boundary_edge?}.size / 2
+        @numFaces = @hefs.size
+        @chi = self.characteristic
+        @genus = self.genus
+        @curvature = self.curvature
+        if self.is_closed? then
+            self.print_stats_for_closed
+        else
+            self.print_stats_for_boundary
+        end
+    end
+
+    def print_stats_for_closed
+        puts "Surface is closed. No boundary edges found."
+        puts ""
+        puts "Here are the stats of the surface:"
+        puts "Number of vertices........... V = #{@numVertices}"
+        puts "Number of edges.............. E = #{@numEdges}"
+        puts "Number of faces.............. F = #{@numFaces}"
+        puts "Euler characteristic......... χ = #{@chi}"
+        puts "Genus........................ g = #{@genus}"
+        puts "Curvature of surface......... κ = #{@curvature}"
+        puts "Check................ |κ - 2πχ| = #{(2 * Math::PI * @chi - @curvature).abs}"
+    end
+
+    def print_stats_for_boundary
+        puts "Surface is not closed."
+        puts "Here are the stats of the surface:"
+        puts ""
+        puts "Here are the stats of the surface:"
+        puts "Number of vertices........... V = #{@numVertices}"
+        puts "Number of edges.............. E = #{@numEdges}"
+        puts "Number of faces.............. F = #{@numFaces}"
+        puts "Number of boundaries......... b = #{self.boundary_components.size}"
+        puts "Euler characteristic......... χ = #{@chi}"
+        puts "Genus........................ g = #{@genus}"
+        puts "Curvature of surface......... κ = #{@curvature}"
+        puts "Check................ |κ - 2πχ| = #{(2 * Math::PI * @chi - @curvature).abs}"
+        puts ""
+        puts "Additional stats:"
+        puts "No. of boundary vertices..... #{self.boundary_vertices.size}"
+        puts "No. of boundary edges........ #{self.boundary_edges.size}"
     end
 
 end

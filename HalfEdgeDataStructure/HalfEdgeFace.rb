@@ -41,7 +41,7 @@ class HalfEdgeFace
         self.adj_half_edges.each do |he|
 
             if he.is_boundary_edge? then
-                puts "boundary edge"
+                # puts "boundary edge"
                 # A boundary edge only touches one face. There's no adjFace for this half-edge.
             elsif he.oppFace.oriented? then
                 # Already oriented. Move along, buddy.
