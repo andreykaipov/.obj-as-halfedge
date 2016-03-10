@@ -141,7 +141,7 @@ class HalfEdgeMesh
         return 1 - self.characteristic / 2.0
     end
 
-    def print_stats
+    def print_info
         @numVertices = @hevs.size
         @numEdges = @hehash.select{|key, edge| not edge.is_boundary_edge?}.size / 2
         @numFaces = @hefs.size
@@ -149,13 +149,13 @@ class HalfEdgeMesh
         @genus = self.genus
         @curvature = self.curvature
         if self.is_closed? then
-            self.print_stats_for_closed
+            self.print_info_for_closed_surface
         else
-            self.print_stats_for_boundary
+            self.print_info_for_surface_with_boundary
         end
     end
 
-    def print_stats_for_closed
+    def print_info_for_closed_surface
         puts "Surface is closed. No boundary edges found."
         puts ""
         puts "Here are the stats of the surface:"
@@ -168,11 +168,10 @@ class HalfEdgeMesh
         puts "Check................ |κ - 2πχ| = #{(2 * Math::PI * @chi - @curvature).abs}"
     end
 
-    def print_stats_for_boundary
+    def print_info_for_surface_with_boundary
         puts "Surface is not closed."
         puts "Here are the stats of the surface:"
         puts ""
-        puts "Here are the stats of the surface:"
         puts "Number of vertices........... V = #{@numVertices}"
         puts "Number of edges.............. E = #{@numEdges}"
         puts "Number of faces.............. F = #{@numFaces}"
@@ -182,7 +181,7 @@ class HalfEdgeMesh
         puts "Curvature of surface......... κ = #{@curvature}"
         puts "Check................ |κ - 2πχ| = #{(2 * Math::PI * @chi - @curvature).abs}"
         puts ""
-        puts "Additional stats:"
+        puts "Additional info:"
         puts "No. of boundary vertices..... #{self.boundary_vertices.size}"
         puts "No. of boundary edges........ #{self.boundary_edges.size}"
     end

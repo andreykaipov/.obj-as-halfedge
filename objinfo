@@ -9,6 +9,6 @@ if __FILE__ == $PROGRAM_NAME
     heMesh = HalfEdgeMesh.new( mesh )
     heMesh.build
     heMesh.orient
-    heMesh.print_stats
+    heMesh.print_info
 
 end
