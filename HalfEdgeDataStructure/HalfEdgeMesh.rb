@@ -5,74 +5,73 @@ require_relative "HalfEdgesHash"
 
 class HalfEdgeMesh
 
-    attr_reader :mesh, :hevs, :hefs, :hehash
-    attr_reader :numVertices, :numEdges, :numFaces, :chi, :genus, :curvature
+    attr_reader :mesh, :hevertices, :hefaces, :hehash,
+                :numVertices, :numEdges, :numFaces, :numBoundaryVertices, :numBoundaryEdges,
+                :characteristic, :boundaries, :genus, :curvature
 
+    # Many attributes here can exist as methods, but I think it's pretty nice to initialize all of them here.
     def initialize mesh
         @mesh = mesh
         @hevs = []
         @hefs = []
         @hehash = Hash.new()
 
-        # Find duplicates with their sizes in (I think) linear time.
-        fakeVertices = mesh.vertices.group_by{|v| v}.select{|k,v| v.size > 1}.map{|k,v| [k, v.size]}#.to_h
-        unless fakeVertices.empty?
-            puts "\nYou have several pseudo-unique vertices in this mesh. Say what?\n"\
-                 "The following vertices are listed uniquely in your .obj file,\n"\
-                 "but have identical coordinates:\n\n"
-            fakeVertices.each do |fv, multiplicity|
-                puts "(#{fv[0]}, #{fv[1]}, #{fv[2]}) occurs #{multiplicity} times."
-            end
-            puts "\nThis is fine, but the total curvature of the surface may be a bit off"
-            puts "since we'll ignore the angles formed by adjacent edges on these vertices."
-        end
+        self.build
+        self.orient
+
+        # After building and orienting, we can get the following info...
+
+        @numBoundaryVertices = @hevs.select{ |v| v.is_boundary_vertex? }.size
+        @numBoundaryEdges = @hehash.select { |_, he| he.is_boundary_edge? }.size
+
+        @numVertices = @hevs.size
+        @numEdges = @hehash.select { |_, he| !he.is_boundary_edge? }.size / 2 + @numBoundaryEdges
+        @numFaces = @hefs.size
+
+        @characteristic = @numVertices - @numEdges + @numFaces
+        @boundaries = self.boundary_components.size
+        @genus = 1 - (@characteristic + @boundaries) / 2
+        @curvature = @hevs.map(&:compute_curvature).reduce(0, &:+)
     end
 
+    # Builds the simple mesh as a half-edge data structure.
     def build
         self.build_vertices
         self.build_faces
     end
 
+    # Transforms our simple vertices into half-edge vertices.
     def build_vertices
-        mesh.vertices.each do |v|
-            halfEdgeVertex = HalfEdgeVertex.new(v[0], v[1], v[2])
-            @hevs << halfEdgeVertex
+        @mesh.vertices.each do |v|
+            @hevs << HalfEdgeVertex.new(v[0], v[1], v[2])
         end
     end
 
+    # Transforms our faces into half-edge faces, and create the links between half-edges around each face.
+    # The orientation we give each face is arbitrary -- we'll fix it later if necessary.
     def build_faces
-        mesh.faces.each do |face|
-            # Each og face will correspond to a halfEdgeFace.
+        @mesh.faces.each do |face|
             halfEdgeFace = HalfEdgeFace.new()
             halfEdgeFace.oriented = false
-            # Create our half-edges for this face and store them in an array.
-            # Note that the length of `face` is the number of half-edges for this face.
-            faceHalfEdges = []
-            face.length.times do
+
+            # For each vertex of our face, there is a corresponding half-edge.
+            faceHalfEdges = face.map do |_|
                 halfEdge = HalfEdge.new()
                 halfEdge.adjFace = halfEdgeFace
-                faceHalfEdges << halfEdge
+                halfEdge
             end
+
             # Set the face to touch one of its half-edges. Doesn't matter which one.
             halfEdgeFace.adjHalfEdge = faceHalfEdges[0]
 
-            # For each half-edge, connect it to the next one -- like a circle you know.
-            # This gives each face an arbitary orientation. We'll fix it later if necessary.
-            # Also set the opposite of each half-edge via hashing.
-            # Note: The edge-vertex connection is not -- NOT WHAT? I FORGOT TO FINISH THIS COMMENT
+            # For each half-edge, connect it to the next one, and set the opposite of it via hashing.
             faceHalfEdges.size.times do |i|
                 faceHalfEdges[i].endVertex = @hevs[ face[i] ]
                 faceHalfEdges[i - 1].nextHalfEdge = faceHalfEdges[i]
                 @hevs[ face[i - 1] ].outHalfEdge = faceHalfEdges[i]
 
-                if face[i - 1] == face[i] then
-                    abort "Woah!\nThere is a half-edge whose source and target vertex are the same!\n"\
-                    "Offending half-edge occurs in face `f #{face.map{|v| v+1}.join(' ')}`.\n"\
-                    "Vertex in question is `v #{@hevs[face[i]].x} #{@hevs[face[i]].y} #{@hevs[face[i]].z}`."
-                else
-                    key = @hehash.form_edge_key face[i - 1], face[i]
-                    @hehash.hash_edge key, faceHalfEdges[i]
-                end
+                key = @hehash.form_edge_key face[i - 1], face[i]
+                @hehash.hash_edge key, faceHalfEdges[i]
             end
 
             @hefs << halfEdgeFace
@@ -81,7 +80,7 @@ class HalfEdgeMesh
 
     # Here we iteratively orient all of the faces in our mesh. The recursive solution overflows the stack!
     # What we do is suppose the first face is oriented, and then orient its adjacent faces.
-    # Then we orient the faces that were oriented! In this way, the stack always gets smaller!
+    # Then we orient the faces that were just oriented! In this way, the stack always gets smaller!
     def orient
         @hefs[0].oriented = true
         stack = [ @hefs[0] ]
@@ -92,28 +91,23 @@ class HalfEdgeMesh
         end
     end
 
-    def curvature
-        return @hevs.map(&:compute_curvature).reduce(0, &:+)
-    end
-
-    def boundary_edges
-        @hehash.select { |key, he| he.is_boundary_edge? }
-    end
-
-    def boundary_vertices
-        @hevs.select{ |v| v.is_boundary_vertex? }
-    end
-
     # The mesh acts as a surface. It's either closed or it has a boundary.
     def is_closed?
-        return self.boundary_edges.size == 0
+        @numBoundaryEdges == 0
     end
 
-    # Finds the number of boundary components. Considers bow-ties as one component.
-    # The strategy here is to find adjacent boundary vertices by testing against the most
-    # recently found adjacent vertex. Doing so advances our search in a boundary component.
+    # Clumps together boundary vertices that are in the same boundary component.
+    # The strategy here is to just test for adjacency between remaining unchosen
+    # boundary vertices, and all of the vertices in a component.
     def boundary_components
-        boundaryVertices = @hevs.select{ |v| v.is_boundary_vertex? }
+        if @numBoundaryVertices < @numBoundaryEdges then
+            abort "The number of boundary vertices is less than the number of boundary edges.\n"\
+            "This could mean that you have a non-manifold boundary vertex in your mesh. Picture a bow-tie."
+        elsif @numBoundaryVertices > @numBoundaryEdges then
+            abort "Something went really wrong..."
+        end
+
+        boundaryVertices = @hevs.select { |v| v.is_boundary_vertex? }
         boundaryComponents = []
         until boundaryVertices.empty? do
             component = [ boundaryVertices.first ]
@@ -126,60 +120,28 @@ class HalfEdgeMesh
         return boundaryComponents
     end
 
-    # don't forget to check for faces when doing the characteristic stuff for surfaces with boundary.
-    # X(S) = X(S') - b where S is the surface with boundary and S' is the patched up surface
-    # Then once we have X(S), to find g(S), we just use X(S) = 2 - 2g(S).
-    def characteristic
-        edges = @hehash.values.select{|e| not e.is_boundary_edge?}.size / 2
-        boundaryEdges = self.boundary_edges.size
-        return @hevs.size - (edges + boundaryEdges) + @hefs.size
-    end
-
-    def genus
-        b = self.boundary_components.size
-        return 1 - (self.characteristic + b) / 2.0
-    end
-
+    # Oh yeah.
     def print_info
-        @numVertices = @hevs.size
-        @numEdges = @hehash.select{|key, edge| not edge.is_boundary_edge?}.size / 2
-        @numFaces = @hefs.size
+        puts "Here is some information about the surface:"
+        puts ""
+        puts "Number of vertices............. V = #{@numVertices}"
+        puts "Number of edges................ E = #{@numEdges}"
+        puts "Number of faces................ F = #{@numFaces}"
+        puts ""
         if self.is_closed? then
-            self.print_info_for_closed_surface
+            puts "Surface is closed. No boundaries!"
         else
-            self.print_info_for_surface_with_boundary
+            puts "Surface is not closed and has boundaries."
+            puts ""
+            puts "Number of boundaries........... b = #{self.boundary_components.size}"
+            puts "- boundary vertices............ #{@numBoundaryVertices}"
+            puts "- boundary edges............... #{@numBoundaryEdges}"
         end
-    end
-
-    def print_info_for_closed_surface
-        puts "Surface is closed. No boundary edges found."
         puts ""
-        puts "Here are the stats of the surface:"
-        puts "Number of vertices........... V = #{@numVertices}"
-        puts "Number of edges.............. E = #{@numEdges}"
-        puts "Number of faces.............. F = #{@numFaces}"
-        puts "Euler characteristic......... χ = #{self.characteristic}"
-        puts "Genus........................ g = #{self.genus}"
-        puts "Curvature of surface......... κ = #{self.curvature}"
-        puts "Check................ |κ - 2πχ| = #{(2 * Math::PI * self.characteristic - self.curvature).abs}"
-    end
-
-    def print_info_for_surface_with_boundary
-        puts "Surface is not closed."
-        puts "Here are the stats of the surface:"
-        puts ""
-        puts "Number of vertices........... V = #{@numVertices}"
-        puts "Number of edges.............. E = #{@numEdges}"
-        puts "Number of faces.............. F = #{@numFaces}"
-        puts "Number of boundaries......... b = #{self.boundary_components.size}"
-        puts "Euler characteristic......... χ = #{self.characteristic}"
-        puts "Genus........................ g = #{self.genus}"
-        puts "Curvature of surface......... κ = #{self.curvature}"
-        puts "Check................ |κ - 2πχ| = #{(2 * Math::PI * self.characteristic - self.curvature).abs}"
-        puts ""
-        puts "Additional info:"
-        puts "No. of boundary vertices..... #{self.boundary_vertices.size}"
-        puts "No. of boundary edges........ #{self.boundary_edges.size}"
+        puts "Euler characteristic........... χ = #{@characteristic}"
+        puts "Genus.......................... g = #{@genus}"
+        puts "Curvature of surface........... κ = #{@curvature}"
+        puts "Check Gauss-Bonnet..... |κ - 2πχ| = #{(2 * Math::PI * @characteristic - @curvature).abs}"
     end
 
 end
