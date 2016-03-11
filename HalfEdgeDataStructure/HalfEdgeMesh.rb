@@ -15,7 +15,7 @@ class HalfEdgeMesh
         @hehash = Hash.new()
 
         # Find duplicates with their sizes in (I think) linear time.
-        fakeVertices = mesh.vertices.group_by{|v| v}.select{|k,v| v.size > 1}.map{|k,v| [k, v.size]}.to_h
+        fakeVertices = mesh.vertices.group_by{|v| v}.select{|k,v| v.size > 1}.map{|k,v| [k, v.size]}#.to_h
         unless fakeVertices.empty?
             puts "\nYou have several pseudo-unique vertices in this mesh. Say what?\n"\
                  "The following vertices are listed uniquely in your .obj file,\n"\
@@ -93,7 +93,7 @@ class HalfEdgeMesh
     end
 
     def curvature
-        @hevs.map(&:compute_curvature).reduce(0, &:+)
+        return @hevs.map(&:compute_curvature).reduce(0, &:+)
     end
 
     def boundary_edges
@@ -132,22 +132,18 @@ class HalfEdgeMesh
     def characteristic
         edges = @hehash.values.select{|e| not e.is_boundary_edge?}.size / 2
         boundaryEdges = self.boundary_edges.size
-        b = self.boundary_components.size
-        χ = @hevs.size - (edges + boundaryEdges) + @hefs.size
-        return χ
+        return @hevs.size - (edges + boundaryEdges) + @hefs.size
     end
 
     def genus
-        return 1 - self.characteristic / 2.0
+        b = self.boundary_components.size
+        return 1 - (self.characteristic + b) / 2.0
     end
 
     def print_info
         @numVertices = @hevs.size
         @numEdges = @hehash.select{|key, edge| not edge.is_boundary_edge?}.size / 2
         @numFaces = @hefs.size
-        @chi = self.characteristic
-        @genus = self.genus
-        @curvature = self.curvature
         if self.is_closed? then
             self.print_info_for_closed_surface
         else
@@ -162,10 +158,10 @@ class HalfEdgeMesh
         puts "Number of vertices........... V = #{@numVertices}"
         puts "Number of edges.............. E = #{@numEdges}"
         puts "Number of faces.............. F = #{@numFaces}"
-        puts "Euler characteristic......... χ = #{@chi}"
-        puts "Genus........................ g = #{@genus}"
-        puts "Curvature of surface......... κ = #{@curvature}"
-        puts "Check................ |κ - 2πχ| = #{(2 * Math::PI * @chi - @curvature).abs}"
+        puts "Euler characteristic......... χ = #{self.characteristic}"
+        puts "Genus........................ g = #{self.genus}"
+        puts "Curvature of surface......... κ = #{self.curvature}"
+        puts "Check................ |κ - 2πχ| = #{(2 * Math::PI * self.characteristic - self.curvature).abs}"
     end
 
     def print_info_for_surface_with_boundary
@@ -176,10 +172,10 @@ class HalfEdgeMesh
         puts "Number of edges.............. E = #{@numEdges}"
         puts "Number of faces.............. F = #{@numFaces}"
         puts "Number of boundaries......... b = #{self.boundary_components.size}"
-        puts "Euler characteristic......... χ = #{@chi}"
-        puts "Genus........................ g = #{@genus}"
-        puts "Curvature of surface......... κ = #{@curvature}"
-        puts "Check................ |κ - 2πχ| = #{(2 * Math::PI * @chi - @curvature).abs}"
+        puts "Euler characteristic......... χ = #{self.characteristic}"
+        puts "Genus........................ g = #{self.genus}"
+        puts "Curvature of surface......... κ = #{self.curvature}"
+        puts "Check................ |κ - 2πχ| = #{(2 * Math::PI * self.characteristic - self.curvature).abs}"
         puts ""
         puts "Additional info:"
         puts "No. of boundary vertices..... #{self.boundary_vertices.size}"
@@ -187,3 +183,4 @@ class HalfEdgeMesh
     end
 
 end
+
