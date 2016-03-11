@@ -124,7 +124,7 @@ class HalfEdgeVertex
         vectors = self.__boundary__neighboring_vertices.map { |vertex| self.vector_to vertex }
         angles = []
         (vectors.size - 1).times do |i|
-            angles[i] = vectors[i].angle_with vectors[i + 1]
+            angles[i] = Math::acos vectors[i].normalize.inner_product vectors[i + 1].normalize
         end
         sumOfAngles = angles.reduce(0, :+)
         @curvature = Math::PI - sumOfAngles
@@ -145,10 +145,11 @@ class HalfEdgeVertex
             if vectors.member? Vector[0.0, 0.0, 0.0] then
                 return 0
             else
-                vectors[i - 1].angle_with vectors[i]
+                Math::acos vectors[i - 1].normalize.inner_product vectors[i].normalize
             end
         end
         sumOfAngles = angles.reduce(0, :+)
         @curvature = 2 * Math::PI - sumOfAngles
     end
 end
+
