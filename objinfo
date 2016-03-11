@@ -5,8 +5,10 @@ require_relative "HalfEdgeDataStructure/HalfEdgeMesh"
 
 if __FILE__ == $PROGRAM_NAME
 
-    mesh = OBJParser.parse ARGV[0]
-    heMesh = HalfEdgeMesh.new mesh
+    simpleMesh = OBJParser.parse ARGV[0]
+    heMesh = HalfEdgeMesh.new simpleMesh
+    heMesh.build
+    heMesh.orient
     heMesh.print_info
-
+    
 end
