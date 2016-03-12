@@ -1,35 +1,60 @@
 Introduction
 ------------
-A 3D-surface can be described by a list of vertices in 3D-space, along with a list of faces tha connect the vertices together. `.obj` do exactly this. For example, the following lines define a triangle in 3D-space whose vertices are on the points *(1,0,0)*, *(0,1,0)*, and *(0,0,1)*.
+This small project was an open-ended assignment for a Computer Graphics course at FIU. It verifies the discrete Gauss-Bonnet theorem for surfaces described by `.obj` files by parsing them into a half-edge data structure.
 
-    v 1 0 0
-    v 0 1 0
-    v 0 0 1
-    f 1 2 3
+For now, we assume that our `.obj` files do not contain any `o` or `g` tags so that the files describe only one surface at a time. However, vertex texture and vertex normal coordinates are fine, and faces can have an arbitrary amount of sides.
 
-The face of the triangle is then specified by listing the vertices consecutively. In this way, each edge of a face always has a next edge to go to. By default, we assume a counter-clockwise orientation of the triangle, so that the triangle face is only visible to us when (from our point-of-view!) we can traverse the vertices of the triangle in a counter-clockwise fashion. Equivalently, by the right-hand-rule, the face will only be visible to us if and only if the normal vector of the face points towards us (i.e. out of the screen).
+These [notes](http://courses.cms.caltech.edu/cs171/assignments-2014/hw5/hw5-html/cs171hw5.html#x1-80006) helped a lot.
 
-For this project, we assume that our `.obj` files contain nothing more than a list of vertices and faces, and that they describe no more than one 3D-surface at a time. It should be noted that faces do not need to always be triangular -- we allow for faces to have an arbitrary amount of sides.
-
-This small project verifies the discrete Gauss-Bonnet theorem for surfaces described by .obj files by parsing them into a halfedge data structure, written in Ruby.
 
 Usage
 -----
-From the command-line, just execute `./objinfo` followed by a `.obj` file of your choice. Some cool info will then be printed for the provided `.obj` file. For example,
+From the command-line, just execute `./objinfo` followed by a `.obj` file of your choice. Don't forget to `chmod +x` it before though. Some cool info will then be printed for the provided `.obj` file. For example,
 
     $ ./objinfo objs/sphere-with-one-puncture.obj
-    Surface is not closed.
-    Here are the stats of the surface:
+    Here is some information about the surface:
     
-    Number of vertices........... V = 62
-    Number of edges.............. E = 177
-    Number of faces.............. F = 119
-    Number of boundaries......... b = 1
-    Euler characteristic......... χ = 1
-    Genus........................ g = 0.5
-    Curvature of surface......... κ = 6.283185307179575
-    Check................ |κ - 2πχ| = 1.1546319456101628e-14
+    Number of vertices............. V = 62
+    Number of edges................ E = 180
+    Number of faces................ F = 119
     
-    Additional info:
-    No. of boundary vertices..... 3
-    No. of boundary edges........ 3
+    Surface is not closed and has boundaries.
+    
+    Number of boundaries........... b = 1
+    - boundary vertices............ 3
+    - boundary edges............... 3
+    
+    Euler characteristic........... χ = 1
+    Genus.......................... g = 0
+    Curvature of surface........... κ = 6.283185307179575
+    Check Gauss-Bonnet..... |κ - 2πχ| = 1.1546319456101628e-14
+
+
+Background
+----------
+The Gauss-Bonnet theorem is a remarkable statement about surfaces, relating their geometry to their topology. Specifically, it goes something like this (I wish GitHub supported MathJax).
+
+[**Gauss-Bonnet theorem for 2D manifolds.**](https://en.wikipedia.org/wiki/Gauss%E2%80%93Bonnet_theorem#Statement_of_the_theorem)
+*The integral of the Gaussian curvature over a surface (with respect to the area), plus the integral over the boundary of that same surface of the geodesic curvature (with respect to the arc length), is equal to 2π times the Euler characteristic of the surface.*
+
+If we now try to discretize a 2D manifold by representing it as a polygonal mesh (i.e. the surface of a polyhedron), then the curvature of the manifold will be concentrated at its vertices. Precisely, the curvature of each vertex would be its angular defect. What we then get is the discrete analog of the Gauss-Bonnet theorem.
+
+[**Descartes' theorem.**](https://en.wikipedia.org/wiki/Angular_defect#Descartes.27_theorem)
+*The sum of the curvatures of the vertices of the surface is equal to the 2π times the Euler characteristic of the surface.*
+
+Note that if that surface has a boundary, then the angular defect for boundary vertices would be π less than the angular defect for vertices within the interior of a surface.
+
+Now, `.obj` files do a great job at desribing polygonal meshes. For example, the following lines describe the surface of a tetrahedron in the first octant of the xyz-grid.
+
+    v 0 0 0
+    v 1 0 0
+    v 0 1 0
+    v 0 0 1
+    f 3 2 1
+    f 1 2 4
+    f 2 3 4
+    f 4 3 1
+
+We're given a list of vertices, and a list of faces defined on those vertices. The default orientation of each face is counter-clockwise, so that each face of the tetrahedron is only visible to us when we can traverse the defining vertices of each face in a counter-clockwise fashion (from our point-of-view!). Equivalently, by the right-hand-rule, the faces that are visible to us have their normal vectors pointing toward us (i.e. out of the screen).
+
+If we would like to verify the discrete Gauss-Bonnet theorem for polyhedral surfaces, then we have to compute the curvatures of each vertex. Unfortunately, the current description of the mesh isn't too efficient. Luckily, hidden in the above syntax is an efficient data structure waiting to be formed -- the [half-edge data structure](http://www.flipcode.com/archives/The_Half-Edge_Data_Structure.shtml), since the *links* between defining vertices of each face are precisely the half-edges.
