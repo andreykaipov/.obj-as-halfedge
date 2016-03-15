@@ -42,8 +42,13 @@ class OBJParser
             puts "\nYou have several pseudo-unique vertices in this mesh. Say what?\n"\
                  "The following vertices are listed uniquely in your .obj file,\n"\
                  "but have identical coordinates:\n\n"
+            times = 0
             fakeVertices.each do |fv, multiplicity|
                 puts "(#{fv[0]}, #{fv[1]}, #{fv[2]}) occurs #{multiplicity} times."
+                if (times += 1) > 5 then
+                    puts "\nWe've only listed five here. In total there are #{fakeVertices.size} duplicates."
+                    break
+                end
             end
             puts "\nThis is fine, but the total curvature of the surface may be a bit off"
             puts "since we'll ignore the angles formed by adjacent edges on these vertices."
