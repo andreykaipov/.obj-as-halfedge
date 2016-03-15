@@ -30,40 +30,6 @@ class HalfEdgeVertex
         return false
     end
 
-    # We split this case up for boundary and non-boundary vertices.
-    # Can we just have one method for both? ... I can't think of one!
-    def adjacent_to? target
-        if self.is_boundary_vertex? then
-            return self.__boundary__adjacent_to? target
-        else
-            return self.__nonboundary__adjacent_to? target
-        end
-    end
-
-
-    # Returns an array of the neighboring vertices of this vertex.
-    # To do this we first find the outgoing halfedges and just get their vertices.
-    def __nonboundary__neighboring_vertices
-        outgoingHEs = []
-        halfedge = self.outHalfEdge
-        loop do
-            outgoingHEs << halfedge
-            halfedge = halfedge.oppHalfEdge.nextHalfEdge
-            break if halfedge == self.outHalfEdge
-        end
-        return outgoingHEs.map(&:endVertex)
-    end
-
-    # Just ask if target is in the neighboring vertices?
-    # Also take care of trivial case.
-    def __nonboundary__adjacent_to? target
-        if self == target then
-            return true
-        else
-            self.__nonboundary__neighboring_vertices.member? target
-        end
-    end
-
     # Here we swipe from the outgoing halfedge to a boundary halfedge,
     # and then swipe all the way to the other boundary halfedge.
     # The style in which we sweep first is important - take note!
@@ -90,10 +56,31 @@ class HalfEdgeVertex
         return neighbors
     end
 
-    # In this case, since we don't know the outgoing halfedge, we will traverse
-    # the halfedges in one direction, and if we hit a boundary halfedge, then
-    # we will traverse them in the other direction. If this other direction also
-    # hits a boundary halfedge, then the target vertex is not adjacent to self!
+    # Returns an array of the neighboring vertices of this vertex.
+    # To do this we first find the outgoing halfedges and just get their vertices.
+    def __nonboundary__neighboring_vertices
+        outgoingHEs = []
+        halfedge = self.outHalfEdge
+        loop do
+            outgoingHEs << halfedge
+            halfedge = halfedge.oppHalfEdge.nextHalfEdge
+            break if halfedge == self.outHalfEdge
+        end
+        return outgoingHEs.map(&:endVertex)
+    end
+
+    # We split this case up for boundary and non-boundary vertices.
+    # Can we just have one method for both? ... I can't think of one!
+    def adjacent_to? target
+        if self.is_boundary_vertex? then
+            return self.__boundary__adjacent_to? target
+        else
+            return self.__nonboundary__adjacent_to? target
+        end
+    end
+
+    # Just ask if target is in the neighboring vertices?
+    # Also take care of trivial case.
     def __boundary__adjacent_to? target
         # A vertex is trivially adjacent to itself.
         if self == target then
@@ -101,6 +88,48 @@ class HalfEdgeVertex
         else
             self.__boundary__neighboring_vertices.member? target
         end
+    end
+
+    def __nonboundary__adjacent_to? target
+        if self == target then
+            return true
+        else
+            self.__nonboundary__neighboring_vertices.member? target
+        end
+    end
+
+    # This method is for boundary vertices.
+    def adjacent_via_boundary_edge_to? target
+
+        neighbors = []
+        halfedge = self.outHalfEdge
+        prev = nil
+
+        # Sweep to the boundary.
+        loop do
+            break if halfedge.is_boundary_edge?
+            halfedge = halfedge.oppHalfEdge.nextHalfEdge
+        end
+        # Now we're at the boundary.
+        return true if halfedge.endVertex == target
+
+        # Sweep to the other boundary.
+        loop do
+            # This until-loop is a workaround to not having previous pointers.
+            until halfedge.endVertex == self do
+                prev = halfedge.dup
+                halfedge = halfedge.nextHalfEdge
+            end
+            neighbors << prev.endVertex
+            break if halfedge.is_boundary_edge?
+            halfedge = halfedge.oppHalfEdge
+        end
+
+        # Now we're at the other boundary.
+        return true if prev.endVertex == target
+
+        return false # otherwise
+
     end
 
 

@@ -107,18 +107,24 @@ class HalfEdgeMesh
         @hehash.select{ |_, he| he.is_boundary_edge? }.size
     end
 
+    # DFS on the boundary vertices.
     def boundaries
         boundaryVertices = @hevertices.select{ |v| v.is_boundary_vertex? }
         boundaryComponents = []
         until boundaryVertices.empty? do
-            component = [ boundaryVertices.first ]
-            (boundaryVertices - component).each do |bv|
-                component << bv if component.any?{ |v| bv.adjacent_to? v }
+            boundaryComponent = []
+            discovered = [ boundaryVertices.shift ]
+            until discovered.empty? do
+                v = discovered.pop
+                boundaryComponent << v
+                boundaryVertices.each do |bv|
+                    if v.adjacent_via_boundary_edge_to? bv then discovered << bv end
+                end
+                boundaryVertices = boundaryVertices - discovered
             end
-            boundaryVertices = boundaryVertices - component
-            boundaryComponents << component
+            boundaryComponents << boundaryComponent
         end
-        return boundaryComponents.size
+        return boundaryComponents
     end
 
     def is_closed?
@@ -134,7 +140,7 @@ class HalfEdgeMesh
     end
 
     def genus
-        1 - (characteristic + boundaries) / 2
+        1 - (characteristic + boundaries.size) / 2.0
     end
 
     def print_info
@@ -156,7 +162,7 @@ class HalfEdgeMesh
         else
             puts "Surface is not closed and has boundaries."
             puts ""
-            puts "Number of boundaries........... b = #{boundaries}"
+            puts "Number of boundaries........... b = #{boundaries.size}"
             puts "- boundary vertices............ #{boundary_vertices}"
             puts "- boundary edges............... #{boundary_edges}"
         end
