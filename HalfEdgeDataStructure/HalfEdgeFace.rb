@@ -44,7 +44,11 @@ class HalfEdgeFace
                 # puts "boundary edge"
                 # A boundary edge only touches one face. There's no adjFace for this half-edge.
             elsif he.oppFace.oriented? then
-                # Already oriented. Move along, buddy.
+
+                if he.has_bad_opposite? then
+                    abort "Mesh is unorientable."
+                end
+
             elsif he.has_bad_opposite? then
                 puts "Orienting the face on the vertices:"
 
