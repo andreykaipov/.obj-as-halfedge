@@ -5,7 +5,7 @@ require_relative "HalfEdgesHash"
 
 class HalfEdgeMesh
 
-    attr_reader :mesh, :hevertices, :hefaces, :hehash
+    attr_reader :mesh, :hevertices, :hefaces, :hehash, :disconnectedGroups
 
     # Many attributes here can exist as methods, but I think it's pretty nice to initialize all of them here.
     def initialize mesh
@@ -61,13 +61,31 @@ class HalfEdgeMesh
 
     # Iteratively orient all of the faces in our mesh.
     def orient
-        @hefaces[0].oriented = true
-        stack = [ @hefaces[0] ]
-        until stack.empty?
-            face = stack.pop
-            orientedFaces = face.orient_adj_faces
-            orientedFaces.each{ |face| stack.push face }
+        unorientedFaces = @hefaces
+        @disconnectedGroups = 0
+
+        until unorientedFaces.empty? do
+            unorientedFaces[0].oriented = true
+            stack = [ unorientedFaces[0] ]
+            until stack.empty?
+                face = stack.pop
+                orientedFaces = face.orient_adj_faces
+                orientedFaces.each{ |face| stack.push face }
+            end
+            unorientedFaces = unorientedFaces.select{ |face| not face.oriented? }
+            @disconnectedGroups += 1
         end
+
+        return true
+    end
+
+    def all_faces_oriented
+        @hefaces.each do |hef|
+            if not hef.oriented? then
+                return false
+            end
+        end
+        return true;
     end
 
     def vertices
