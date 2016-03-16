@@ -1,3 +1,11 @@
+#
+# @author Andrey Kaipov
+#
+# This class represents a mesh constructed of half-edges, and is initialized from a simple list
+# of vertices and a list of faces indexed onthose vertices. Once initialized, we can build it,
+# orient it, find its boundaries, and compute some topological and geometrical properties of it.
+#
+
 require_relative "HalfEdge"
 require_relative "HalfEdgeVertex"
 require_relative "HalfEdgeFace"
@@ -12,7 +20,7 @@ class HalfEdgeMesh
         @mesh = mesh
         @hevertices = []
         @hefaces = []
-        @hehash = Hash.new()
+        @hehash = HalfEdgeHash.new()
     end
 
     # Builds the simple mesh as a half-edge data structure.
@@ -158,7 +166,7 @@ class HalfEdgeMesh
     end
 
     def genus
-        1 - (characteristic + boundaries.size) / 2.0
+        1 - (characteristic + boundaries.size) / 2
     end
 
     def print_info
