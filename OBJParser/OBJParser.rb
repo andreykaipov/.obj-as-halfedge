@@ -1,4 +1,11 @@
-# A mesh will be a list of vertices and a list of faces.
+#
+# @author Andrey Kaipov
+#
+# This class is for parsing obj files.
+# Currently it contains only one class method for parsing obj files into a simple mesh.
+#
+
+# A simple mesh is just a list of vertices and a list of faces.
 Mesh = Struct.new(:vertices, :faces)
 
 class OBJParser

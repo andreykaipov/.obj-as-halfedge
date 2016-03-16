@@ -1,3 +1,11 @@
+#
+# @author Andrey Kaipov
+#
+# This class represents a half-edge.
+# This is the fundamental piece of a half-edge mesh as it links together faces and vertices.
+# Any kind of traversal around the mesh we do heavily involves these guys.
+#
+
 class HalfEdge
 
     attr_accessor :endVertex, :adjFace, :oppHalfEdge, :nextHalfEdge

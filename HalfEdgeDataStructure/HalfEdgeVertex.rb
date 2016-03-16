@@ -1,3 +1,13 @@
+#
+# @author Andrey Kaipov
+#
+# This class represents a vertex of our half-edge mesh.
+# It holds the coordinates of the vertex, and a pointer to one outgoing half-edge,
+# and some other helpful attributes. Like with faces, while the operations on
+# vertices are very important, they're very easy to initialize once we create
+# our half-edges!
+#
+
 require "matrix"
 
 class HalfEdgeVertex
@@ -181,4 +191,3 @@ class HalfEdgeVertex
         @curvature = 2 * Math::PI - sumOfAngles
     end
 end
-

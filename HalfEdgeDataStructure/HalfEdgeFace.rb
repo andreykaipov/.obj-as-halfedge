@@ -1,3 +1,11 @@
+#
+# @author Andrey Kaipov
+#
+# This class represents a face in our half-edge mesh.
+# It knows whether it's oriented or not, and it knows one bordering half-edge.
+# While the operations on faces are very important, they're very easy to initialize!
+#
+
 class HalfEdgeFace
 
     attr_accessor :adjHalfEdge, :oriented

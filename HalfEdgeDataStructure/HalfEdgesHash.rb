@@ -1,4 +1,11 @@
-class Hash
+#
+# @author Andrey Kaipov
+#
+# This class is a subclass of a Hash, meant for hashing half-edges specifically.
+# We use to identify half-edges that are opposite to one another.
+#
+
+class HalfEdgeHash < Hash
 
     # Here x can be thought of as the source and y as the target of a half-edge.
     # By sorting the pair of vertices and using a hash, we are able to detect
