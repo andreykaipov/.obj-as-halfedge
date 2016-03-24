@@ -9,7 +9,9 @@
 require_relative "HalfEdge"
 require_relative "HalfEdgeVertex"
 require_relative "HalfEdgeFace"
-require_relative "HalfEdgesHash"
+require_relative "HalfEdgeHash"
+
+require "set"
 
 class HalfEdgeMesh
 
@@ -18,9 +20,19 @@ class HalfEdgeMesh
     # Many attributes here can exist as methods, but I think it's pretty nice to initialize all of them here.
     def initialize mesh
         @mesh = mesh
-        @hevertices = []
-        @hefaces = []
-        @hehash = HalfEdgeHash.new()
+        @heVertices = []
+        @heFaces = []
+        @heEdges = []
+        self.build
+        self.orient_and_find_disconnected_groups
+    end
+
+    def from_list_of_faces disconnectedGroup
+
+        @heFaces = disconnectedGroup
+        @heEdges = disconnectedGroup.flat_map { |hef| hef.adj_half_edges }
+        @heVertices = Set.new( @heEdges.map { |he| he.endVertex } ).to_a
+
     end
 
     # Builds the simple mesh as a half-edge data structure.
@@ -32,13 +44,15 @@ class HalfEdgeMesh
     # Transforms our simple vertices into half-edge vertices.
     def build_vertices
         @mesh.vertices.each do |v|
-            @hevertices << HalfEdgeVertex.new(v[0], v[1], v[2])
+            @heVertices << HalfEdgeVertex.new(v[0], v[1], v[2])
         end
     end
 
     # Transforms our faces into half-edge faces, and create the links between half-edges around each face.
     # The orientation we give each face is arbitrary -- we'll fix it later if necessary.
     def build_faces
+        heHash = HalfEdgeHash.new()
+
         @mesh.faces.each do |face|
             halfEdgeFace = HalfEdgeFace.new()
             halfEdgeFace.oriented = false
@@ -54,41 +68,59 @@ class HalfEdgeMesh
             halfEdgeFace.adjHalfEdge = faceHalfEdges[0]
 
             # For each half-edge, connect it to the next one, and set the opposite of it via hashing.
+            # Also populate the half-edges array.
             faceHalfEdges.size.times do |i|
-                faceHalfEdges[i].endVertex = @hevertices[ face[i] ]
+                faceHalfEdges[i].endVertex = @heVertices[ face[i] ]
                 faceHalfEdges[i - 1].nextHalfEdge = faceHalfEdges[i]
-                @hevertices[ face[i - 1] ].outHalfEdge = faceHalfEdges[i]
+                @heVertices[ face[i - 1] ].outHalfEdge = faceHalfEdges[i]
 
-                key = @hehash.form_edge_key face[i - 1], face[i]
-                @hehash.hash_edge key, faceHalfEdges[i]
+                key = heHash.form_edge_key face[i - 1], face[i]
+                heHash.hash_edge key, faceHalfEdges[i]
+
+                @heEdges << faceHalfEdges[i]
             end
 
-            @hefaces << halfEdgeFace
+            @heFaces << halfEdgeFace
         end
     end
 
     # Iteratively orient all of the faces in our mesh.
-    def orient
-        unorientedFaces = @hefaces
-        @disconnectedGroups = 0
+    def orient_and_find_disconnected_groups
+
+        unorientedFaces = @heFaces
+        @disconnectedGroups = []
 
         until unorientedFaces.empty? do
-            unorientedFaces[0].oriented = true
-            stack = [ unorientedFaces[0] ]
-            until stack.empty?
-                face = stack.pop
-                orientedFaces = face.orient_adj_faces
-                orientedFaces.each{ |face| stack.push face }
+
+            startingFace = unorientedFaces[0]
+            startingFace.oriented = true
+
+            orientedFaces = []
+            orientedFaces << startingFace
+
+            group = []
+
+            until orientedFaces.empty? do
+                face = orientedFaces.pop
+                adjOrientedFaces = face.orient_adj_faces
+                adjOrientedFaces.each{ |face| orientedFaces << face }
+
+                # Before looping again, add the face into the group.
+                group << face
             end
+
+            @disconnectedGroups << group
+
             unorientedFaces = unorientedFaces.select{ |face| not face.oriented? }
-            @disconnectedGroups += 1
+
         end
 
         return true
+
     end
 
     def all_faces_oriented
-        @hefaces.each do |hef|
+        @heFaces.each do |hef|
             if not hef.oriented? then
                 return false
             end
@@ -97,25 +129,25 @@ class HalfEdgeMesh
     end
 
     def vertices
-        if @hevertices.size != @mesh.vertices.size then
-            abort "Not every vertex from the obj file was made into a half-edge-vertex."
-        else
-            return @hevertices.size
-        end
+        # if @heVertices.size != @mesh.vertices.size then
+        #     abort "Not every vertex from the obj file was made into a half-edge-vertex."
+        # else
+            return @heVertices.size
+        # end
     end
 
     def faces
-        if @hefaces.size != @mesh.faces.size then
-            abort "Not every face from the obj file was made into a half-edge-face."
-        else
-            return @hefaces.size
-        end
+        # if @heFaces.size != @mesh.faces.size then
+        #     abort "Not every face from the obj file was made into a half-edge-face."
+        # else
+            return @heFaces.size
+        # end
     end
 
     def edges
         boundaryEdges = []
         nonboundaryHEs = []
-        @hehash.values.each do |he|
+        @heEdges.each do |he|
             if he.is_boundary_edge? then
                 boundaryEdges << he
             else
@@ -126,16 +158,16 @@ class HalfEdgeMesh
     end
 
     def boundary_vertices
-        @hevertices.select{ |v| v.is_boundary_vertex? }.size
+        @heVertices.select{ |v| v.is_boundary_vertex? }.size
     end
 
     def boundary_edges
-        @hehash.select{ |_, he| he.is_boundary_edge? }.size
+        @heEdges.select{ |he| he.is_boundary_edge? }.size
     end
 
     # DFS on the boundary vertices.
     def boundaries
-        boundaryVertices = @hevertices.select{ |v| v.is_boundary_vertex? }
+        boundaryVertices = @heVertices.select{ |v| v.is_boundary_vertex? }
         boundaryComponents = []
         until boundaryVertices.empty? do
             boundaryComponent = []
@@ -158,7 +190,7 @@ class HalfEdgeMesh
     end
 
     def curvature
-        @hevertices.map(&:compute_curvature).reduce(0, &:+)
+        @heVertices.map(&:compute_curvature).reduce(0, &:+)
     end
 
     def characteristic
@@ -170,6 +202,32 @@ class HalfEdgeMesh
     end
 
     def print_info
+
+        if @disconnectedGroups.size == 1 then
+
+            puts "Here is some information about the surface:"
+            self.print_info_for_mesh
+
+        else
+
+            puts "This obj file has #{@disconnectedGroups.size} disconnected mesh groups!"
+            puts "It seems like that traversing our faces via adjacency queries did not touch every face!"
+            puts "However, here is the information for each mesh group separately."
+
+            @disconnectedGroups.each_with_index do |meshGroup, i|
+                puts ""
+                printf "====================================\n"
+                printf "========== Mesh Group %2d ===========\n", (i + 1)
+                printf "====================================\n"
+                self.from_list_of_faces meshGroup
+                self.print_info_for_mesh
+            end
+
+        end
+
+    end
+
+    def print_info_for_mesh
         if boundary_vertices < boundary_edges then
             abort "The number of boundary vertices is less than the number of boundary edges.\n"\
             "This could mean that you have a non-manifold boundary vertex in your mesh. Picture a bow-tie."
@@ -177,7 +235,6 @@ class HalfEdgeMesh
             abort "Lol something went really wrong."
         end
 
-        puts "Here is some information about the surface:"
         puts ""
         puts "Number of vertices............. V = #{vertices}"
         puts "Number of edges................ E = #{edges}"

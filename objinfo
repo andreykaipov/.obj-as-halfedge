@@ -7,8 +7,6 @@ if __FILE__ == $PROGRAM_NAME
 
     simpleMesh = OBJParser.parse ARGV[0]
     heMesh = HalfEdgeMesh.new simpleMesh
-    heMesh.build
-    heMesh.orient
     heMesh.print_info
 
 end

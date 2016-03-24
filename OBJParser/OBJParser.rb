@@ -31,7 +31,7 @@ class OBJParser
                             abort "Woah! That's a bad obj file.\n"\
                             "There is a half-edge whose source and target vertex are the same!\n"\
                             "Offending half-edge occurs in the face `f #{face.map{|v| v+1}.join(' ')}`.\n"\
-                            "Vertex in question is `v #{mesh.vertices[face[i]][0]}" "#{mesh.vertices[face[i]][1]} #{mesh.vertices[face[i]][2]}`."
+                            "Vertex in question is `v #{mesh.vertices[face[i]][0]} #{mesh.vertices[face[i]][1]} #{mesh.vertices[face[i]][2]}`."
                         end
                     end
 
