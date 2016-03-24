@@ -19,12 +19,15 @@ class HalfEdgeMesh
 
     # Many attributes here can exist as methods, but I think it's pretty nice to initialize all of them here.
     def initialize mesh
+
         @mesh = mesh
         @heVertices = []
         @heFaces = []
         @heEdges = []
+
         self.build
         self.orient_and_find_disconnected_groups
+        
     end
 
     def from_list_of_faces disconnectedGroup
