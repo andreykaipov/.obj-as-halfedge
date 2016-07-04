@@ -2,7 +2,7 @@ Introduction
 ------------
 This small project was an open-ended assignment for a Computer Graphics course at FIU. It verifies the discrete Gauss-Bonnet theorem for surfaces described by `.obj` files by parsing them into a half-edge data structure.
 
-This script supports `.obj` files with faces containing an arbitrary amount of sides, and also supports files containing named groups via `o` or `g` tags. Texture and normal indices for vertices are fine as they are ignored.
+This script supports `.obj` files with faces containing an arbitrary amount of sides, and also supports files containing named groups via `o` or `g` tags. Texture and normal indices for vertices are also fine as they are ignored.
 
 These [notes](http://courses.cms.caltech.edu/cs171/assignments-2014/hw5/hw5-html/cs171hw5.html#x1-80006) helped a lot.
 
