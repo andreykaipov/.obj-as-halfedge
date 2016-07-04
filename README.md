@@ -9,9 +9,9 @@ These [notes](http://courses.cms.caltech.edu/cs171/assignments-2014/hw5/hw5-html
 
 Usage
 -----
-From the command-line, just execute `./objinfo` followed by a `.obj` file of your choice. Don't forget to `chmod +x` it before though. Some cool info will then be printed for the provided `.obj` file. For example,
+From the command-line, just execute `ruby objinfo some-obj-file.obj`. Some cool info will then be printed for the provided `.obj` file. For example,
 
-    $ ./objinfo objs/sphere-with-one-puncture.obj
+    $ ruby objinfo objs/sphere-with-one-puncture.obj
     Here is some information about the surface:
     
     Number of vertices............. V = 62
@@ -26,9 +26,8 @@ From the command-line, just execute `./objinfo` followed by a `.obj` file of you
     
     Euler characteristic........... χ = 1
     Genus.......................... g = 0
-    Curvature of surface........... κ = 6.283185307179575
-    Check Gauss-Bonnet..... |κ - 2πχ| = 1.1546319456101628e-14
-
+    Curvature of surface........... κ = 6.283185307179571
+    Check Gauss-Bonnet..... |κ - 2πχ| = 1.509903313490213e-14
 
 Background
 ----------
